@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# PyInstaller / Build
+build/
+dist/
+*.spec
+
+# Arquivos locais
+agendamentos.json
+log_execucao.txt
+.vscode/
