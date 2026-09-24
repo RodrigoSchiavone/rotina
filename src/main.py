@@ -2,17 +2,29 @@ import os
 import sys
 from tkinter import filedialog, messagebox
 
-# Adiciona o diretório atual do script ao caminho de busca do Python
-# Isso permite que o PyInstaller e o Python encontrem 'gerenciador' e 'tray'
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Obtém o caminho absoluto do diretório do script/executável
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+
+# Adiciona o diretório atual e o diretório pai (se necessário) ao sys.path
+if diretorio_atual not in sys.path:
+    sys.path.insert(0, diretorio_atual)
+
+raiz_projeto = os.path.abspath(os.path.join(diretorio_atual, ".."))
+if raiz_projeto not in sys.path:
+    sys.path.insert(0, raiz_projeto)
 
 import customtkinter as ctk
-from gerenciador import GerenciadorTarefas
-from tray import TrayIcone
+
+# Importações dos módulos locais
+try:
+    from gerenciador import GerenciadorTarefas
+    from tray import TrayIcone
+except ModuleNotFoundError:
+    from src.gerenciador import GerenciadorTarefas
+    from src.tray import TrayIcone
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
-
 
 class AppAgendador(ctk.CTk):
 
