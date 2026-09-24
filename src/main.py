@@ -1,7 +1,15 @@
+import os
+import sys
 from tkinter import filedialog, messagebox
+
+# Adiciona o diretório atual do script ao caminho de busca do Python
+# Isso permite que o PyInstaller e o Python encontrem 'gerenciador' e 'tray'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import customtkinter as ctk
 from gerenciador import GerenciadorTarefas
 from tray import TrayIcone
+
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
@@ -11,7 +19,7 @@ class AppAgendador(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Meu Agendador de Tarefas")
+        self.title("Rotina - Agendador de Tarefas")
         self.geometry("650x500")
 
         self.gerenciador = GerenciadorTarefas()
