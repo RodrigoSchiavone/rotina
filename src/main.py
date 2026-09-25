@@ -2,10 +2,7 @@ import os
 import sys
 from tkinter import filedialog, messagebox
 
-# Obtém o caminho absoluto do diretório do script/executável
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
-
-# Adiciona o diretório atual e o diretório pai (se necessário) ao sys.path
 if diretorio_atual not in sys.path:
     sys.path.insert(0, diretorio_atual)
 
@@ -15,7 +12,6 @@ if raiz_projeto not in sys.path:
 
 import customtkinter as ctk
 
-# Importações dos módulos locais
 try:
     from gerenciador import GerenciadorTarefas
     from tray import TrayIcone
@@ -26,21 +22,36 @@ except ModuleNotFoundError:
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
+
+def obter_caminho_recurso(caminho_relativo):
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    return os.path.join(base_path, caminho_relativo)
+
+
 class AppAgendador(ctk.CTk):
 
     def __init__(self):
         super().__init__()
 
         self.title("Rotina - Agendador de Tarefas")
-        self.geometry("650x500")
+        self.geometry("680x520")
+
+        # Define o ícone da janela se o arquivo existir
+        caminho_ico = obter_caminho_recurso(os.path.join("assets", "icon.ico"))
+        if os.path.exists(caminho_ico):
+            try:
+                self.iconbitmap(caminho_ico)
+            except Exception as e:
+                print(f"Não foi possível aplicar o iconbitmap: {e}")
 
         self.gerenciador = GerenciadorTarefas()
         self.gerenciador.iniciar()
 
-        # Configurar interceptação do botão Fechar (X)
         self.protocol("WM_DELETE_WINDOW", self.esconder_janela)
 
-        # Configurar Ícone na Bandeja
         self.tray = TrayIcone(
             callback_abrir=self.mostrar_janela, callback_sair=self.encerrar_app
         )
@@ -49,11 +60,9 @@ class AppAgendador(ctk.CTk):
         self.criar_interface()
 
     def criar_interface(self):
-        # Layout Principal
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        # Cabeçalho / Botão Criar
         frame_topo = ctk.CTkFrame(self)
         frame_topo.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
@@ -69,7 +78,6 @@ class AppAgendador(ctk.CTk):
         )
         label_info.pack(side="right", padx=10)
 
-        # Lista de Agendamentos
         self.scroll_lista = ctk.CTkScrollableFrame(
             self, label_text="Agendamentos Cadastrados"
         )
@@ -80,7 +88,6 @@ class AppAgendador(ctk.CTk):
         self.atualizar_lista_gui()
 
     def atualizar_lista_gui(self):
-        # Limpa widgets antigos
         for widget in self.scroll_lista.winfo_children():
             widget.destroy()
 
@@ -102,22 +109,38 @@ class AppAgendador(ctk.CTk):
             lbl = ctk.CTkLabel(card, text=info_texto, justify="left")
             lbl.pack(side="left", padx=10, pady=5)
 
+            frame_acoes = ctk.CTkFrame(card, fg_color="transparent")
+            frame_acoes.pack(side="right", padx=10, pady=5)
+
+            btn_editar = ctk.CTkButton(
+                frame_acoes,
+                text="Editar",
+                width=60,
+                command=lambda item_dados=item: self.abrir_dialogo_editar(item_dados),
+            )
+            btn_editar.pack(side="left", padx=2)
+
             btn_excluir = ctk.CTkButton(
-                card,
+                frame_acoes,
                 text="Excluir",
                 fg_color="red",
                 hover_color="darkred",
                 width=60,
                 command=lambda id_t=item["id"]: self.excluir_item(id_t),
             )
-            btn_excluir.pack(side="right", padx=10, pady=5)
+            btn_excluir.pack(side="left", padx=2)
 
     def excluir_item(self, id_tarefa):
         self.gerenciador.excluir_agendamento(id_tarefa)
         self.atualizar_lista_gui()
 
     def abrir_dialogo_novo(self):
-        JanelaNovoAgendamento(self, self.salvar_novo_agendamento)
+        JanelaFormularioAgendamento(self, self.salvar_novo_agendamento)
+
+    def abrir_dialogo_editar(self, item_dados):
+        JanelaFormularioAgendamento(
+            self, self.salvar_edicao_agendamento, dados_edicao=item_dados
+        )
 
     def salvar_novo_agendamento(
         self, nome, caminho, frequencia, horarios, dia_semana
@@ -127,11 +150,19 @@ class AppAgendador(ctk.CTk):
         )
         self.atualizar_lista_gui()
 
+    def salvar_edicao_agendamento(
+        self, nome, caminho, frequencia, horarios, dia_semana, id_tarefa
+    ):
+        self.gerenciador.editar_agendamento(
+            id_tarefa, nome, caminho, frequencia, horarios, dia_semana
+        )
+        self.atualizar_lista_gui()
+
     def esconder_janela(self):
-        self.withdraw()  # Esconde a janela sem fechar o processo
+        self.withdraw()
 
     def mostrar_janela(self):
-        self.deiconify()  # Restaura a janela
+        self.deiconify()
         self.focus_force()
 
     def encerrar_app(self):
@@ -139,15 +170,17 @@ class AppAgendador(ctk.CTk):
         self.destroy()
 
 
-class JanelaNovoAgendamento(ctk.CTkToplevel):
+class JanelaFormularioAgendamento(ctk.CTkToplevel):
 
-    def __init__(self, parent, callback_salvar):
+    def __init__(self, parent, callback_salvar, dados_edicao=None):
         super().__init__(parent)
         self.callback_salvar = callback_salvar
+        self.dados_edicao = dados_edicao
 
-        self.title("Novo Agendamento")
+        titulo = "Editar Agendamento" if dados_edicao else "Novo Agendamento"
+        self.title(titulo)
         self.geometry("450x450")
-        self.grab_set()  # Torna a janela modal
+        self.grab_set()
 
         # Nome
         ctk.CTkLabel(self, text="Nome do Agendamento:").pack(
@@ -185,7 +218,7 @@ class JanelaNovoAgendamento(ctk.CTkToplevel):
         )
         self.combo_freq.pack(padx=20, pady=5)
 
-        # Horários (separados por vírgula)
+        # Horários
         ctk.CTkLabel(
             self, text="Horários (formato HH:MM, separados por vírgula):"
         ).pack(anchor="w", padx=20, pady=(5, 0))
@@ -194,10 +227,18 @@ class JanelaNovoAgendamento(ctk.CTkToplevel):
         )
         self.txt_horarios.pack(padx=20, pady=5)
 
-        # Botão Salvar
+        # Preencher campos caso seja edição
+        if self.dados_edicao:
+            self.txt_nome.insert(0, self.dados_edicao["nome"])
+            self.txt_caminho.insert(0, self.dados_edicao["caminho"])
+            self.combo_freq.set(self.dados_edicao["frequencia"])
+            self.txt_horarios.insert(
+                0, ", ".join(self.dados_edicao["horarios"])
+            )
+
         btn_salvar = ctk.CTkButton(
             self,
-            text="Salvar Agendamento",
+            text="Salvar Alterações" if self.dados_edicao else "Salvar Agendamento",
             command=self.confirmar_salvamento,
         )
         btn_salvar.pack(pady=20)
@@ -225,7 +266,13 @@ class JanelaNovoAgendamento(ctk.CTkToplevel):
 
         horarios = [h.strip() for h in horarios_raw.split(",") if h.strip()]
 
-        self.callback_salvar(nome, caminho, freq, horarios, None)
+        if self.dados_edicao:
+            self.callback_salvar(
+                nome, caminho, freq, horarios, None, self.dados_edicao["id"]
+            )
+        else:
+            self.callback_salvar(nome, caminho, freq, horarios, None)
+
         self.destroy()
 
 

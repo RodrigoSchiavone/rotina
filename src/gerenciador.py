@@ -36,17 +36,29 @@ class GerenciadorTarefas:
     def adicionar_agendamento(
         self, nome, caminho_executavel, frequencia, horarios, dia_semana=None
     ):
-        # horarios deve ser uma lista de strings HH:MM, ex: ["08:00", "14:30"]
         novo = {
             "id": int(time.time()),
             "nome": nome,
             "caminho": caminho_executavel,
-            "frequencia": frequencia,  # "Uma vez", "Diariamente", "Semanalmente", "Mensalmente"
+            "frequencia": frequencia,  # "Uma vez", "Diariamente", "Semanalmente"
             "horarios": horarios,
-            "dia_semana": dia_semana,  # Usado se for semanal (ex: "segunda")
+            "dia_semana": dia_semana,
             "ativo": True,
         }
         self.agendamentos.append(novo)
+        self.salvar_agendamentos()
+
+    def editar_agendamento(
+        self, id_tarefa, nome, caminho_executavel, frequencia, horarios, dia_semana=None
+    ):
+        for item in self.agendamentos:
+            if item["id"] == id_tarefa:
+                item["nome"] = nome
+                item["caminho"] = caminho_executavel
+                item["frequencia"] = frequencia
+                item["horarios"] = horarios
+                item["dia_semana"] = dia_semana
+                break
         self.salvar_agendamentos()
 
     def excluir_agendamento(self, id_tarefa):
@@ -57,8 +69,20 @@ class GerenciadorTarefas:
 
     def _executar_programa(self, caminho):
         try:
-            subprocess.Popen(caminho, shell=True)
-            print(f"[{datetime.now()}] Executado com sucesso: {caminho}")
+            # Obtém a pasta pai do executável/script de destino
+            pasta_destino = os.path.dirname(os.path.abspath(caminho))
+
+            # O CMD do Windows não aceita caminhos de rede UNC (\\server\share) como CWD.
+            # Portanto, só aplicamos o 'cwd' se for um diretório local válido.
+            if os.path.exists(pasta_destino) and not pasta_destino.startswith("\\\\"):
+                cwd = pasta_destino
+            else:
+                cwd = None
+
+            # Executa o processo garantindo que o .env e arquivos locais do app sejam encontrados
+            subprocess.Popen(caminho, shell=True, cwd=cwd)
+            print(f"[{datetime.now()}] Executado com sucesso: {caminho} (CWD: {cwd})")
+
         except Exception as e:
             print(f"Erro ao executar {caminho}: {e}")
 
@@ -86,14 +110,12 @@ class GerenciadorTarefas:
                             self._executar_programa, caminho
                         )
                 elif freq == "Uma vez":
-                    # Para 'Uma vez', checa o horário e desativa após executar
                     schedule.every().day.at(h).do(
                         self._executar_uma_vez, t["id"], caminho
                     )
 
     def _executar_uma_vez(self, id_tarefa, caminho):
         self._executar_programa(caminho)
-        # Desativa a tarefa para não rodar novamente
         for t in self.agendamentos:
             if t["id"] == id_tarefa:
                 t["ativo"] = False
