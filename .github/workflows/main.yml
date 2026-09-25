@@ -27,7 +27,7 @@ jobs:
     - name: Compilar com PyInstaller
       shell: cmd
       run: |
-        pyinstaller --noconfirm --onedir --windowed --add-data "src;src" --name "rotina" src/main.py
+        pyinstaller --noconfirm --onedir --windowed --paths="src" --add-data "src;src" --add-data "assets;assets" --icon="assets/icon.ico" --name "rotina" src/main.py
 
     - name: Disponibilizar Artefato (.exe)
       uses: actions/upload-artifact@v4
