@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 import schedule
 
-ARQUIVO_JSON = "agendamentos.json"
+ARQUIVO_JSON = r"C:\Users\rsrosa\Documents\executável\rotina\agendamentos.json"
 
 
 class GerenciadorTarefas:
