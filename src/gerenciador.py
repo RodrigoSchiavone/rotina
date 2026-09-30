@@ -58,6 +58,7 @@ class GerenciadorTarefas:
                 item["frequencia"] = frequencia
                 item["horarios"] = horarios
                 item["dia_semana"] = dia_semana
+                item["ativo"] = True
                 break
         self.salvar_agendamentos()
 
