@@ -11,3 +11,4 @@ dist/
 agendamentos.json
 log_execucao.txt
 .vscode/
+.venv
