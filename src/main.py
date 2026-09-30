@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 from tkinter import filedialog, messagebox
 
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
@@ -31,9 +32,46 @@ def obter_caminho_recurso(caminho_relativo):
     return os.path.join(base_path, caminho_relativo)
 
 
+def configurar_inicializacao_windows():
+    if os.name != "nt":
+        return
+
+    import winreg
+
+    argumentos = [sys.executable]
+    if not getattr(sys, "frozen", False):
+        argumentos.append(os.path.abspath(__file__))
+    argumentos.append("--background")
+
+    comando = subprocess.list2cmdline(argumentos)
+    with winreg.CreateKey(
+        winreg.HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Run",
+    ) as chave:
+        winreg.SetValueEx(chave, "RotinaAgendador", 0, winreg.REG_SZ, comando)
+
+
+def remover_inicializacao_windows():
+    if os.name != "nt":
+        return
+
+    import winreg
+
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0,
+            winreg.KEY_SET_VALUE,
+        ) as chave:
+            winreg.DeleteValue(chave, "RotinaAgendador")
+    except FileNotFoundError:
+        pass
+
+
 class AppAgendador(ctk.CTk):
 
-    def __init__(self):
+    def __init__(self, iniciar_oculto=False):
         super().__init__()
 
         self.title("Rotina - Agendador de Tarefas")
@@ -58,6 +96,8 @@ class AppAgendador(ctk.CTk):
         self.tray.iniciar()
 
         self.criar_interface()
+        if iniciar_oculto:
+            self.withdraw()
 
     def criar_interface(self):
         self.grid_columnconfigure(0, weight=1)
@@ -166,6 +206,13 @@ class AppAgendador(ctk.CTk):
         self.focus_force()
 
     def encerrar_app(self):
+        try:
+            remover_inicializacao_windows()
+        except OSError as e:
+            messagebox.showwarning(
+                "Inicialização automática",
+                f"Não foi possível desativar a inicialização automática: {e}",
+            )
         self.gerenciador.parar()
         self.destroy()
 
@@ -277,5 +324,13 @@ class JanelaFormularioAgendamento(ctk.CTkToplevel):
 
 
 if __name__ == "__main__":
-    app = AppAgendador()
+    try:
+        configurar_inicializacao_windows()
+    except OSError as e:
+        messagebox.showwarning(
+            "Inicialização automática",
+            f"Não foi possível configurar a inicialização automática: {e}",
+        )
+
+    app = AppAgendador(iniciar_oculto="--background" in sys.argv)
     app.mainloop()
